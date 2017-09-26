@@ -16,7 +16,7 @@
 {-# LANGUAGE UnicodeSyntax            #-}
 
 module Data.Map.Multikey.Packed
-           ( Keys(..)
+           ( Keys(..), KeyKey
            , CMap
            , fromList' )
            where
@@ -30,16 +30,19 @@ import Data.Constraint
 
 import Control.Monad
 import Control.Monad.Trans.State
-import Control.Arrow (first)
+import Control.Arrow (first, second)
+
+type KeyKey k = Either ( ( k -> (LSubkey k, RSubkey k)
+                         , LSubkey k -> RSubkey k -> k )
+                       , (Dict (Keys (LSubkey k), Keys (RSubkey k))) )
+                       (Dict (Ord k))
 
 class Eq k => Keys k where
   type LSubkey k :: *
   type LSubkey k = k
   type RSubkey k :: *
   type RSubkey k = k
-  useKeys :: Either ( k -> (LSubkey k, RSubkey k)
-                    , (Dict (Keys (LSubkey k), Keys (RSubkey k))) )
-                    (Dict (Ord k))
+  useKeys :: KeyKey k
 
 instance Keys Int where
   useKeys = Right Dict
@@ -53,7 +56,7 @@ instance Ord a => Keys [a] where
 instance (Keys x, Keys y) => Keys (x,y) where
   type LSubkey (x,y) = x
   type RSubkey (x,y) = y
-  useKeys = Left (id, Dict)
+  useKeys = Left ((id, (,)), Dict)
 
 
 data CMap k a
@@ -69,14 +72,14 @@ lookup :: Keys k => k -> CMap k a -> Maybe a
 lookup = go 0
  where go :: Keys κ => Int -> κ -> CMap κ a -> Maybe a
        go pix k m = case (useKeys, m) of
-        (Left (splitKey, Dict), MKeyMap msk lsv)
+        (Left ((splitKey,_), Dict), MKeyMap msk lsv)
           | (x,y) <- splitKey k
           , Just ix <- (pix * size msk +) <$> lookup x msk
            -> go ix y lsv
         (Right Dict, FlatMap kks v)
           | Just i <- (pix * Map.size kks +) <$> (kks !? k)
           , i <- Arr.length v
-           -> Just $ Arr.unsafeIndex v i
+           -> Just $ v Arr.! i
         _ -> Nothing
 
 flatFromList :: Ord k => [(k, a)] -> CMap k a
@@ -85,15 +88,25 @@ flatFromList l = FlatMap kks v
        vsm = Map.fromList [ (k, (i,x)) | (i,(k,x)) <- zip [0..] l ]
        v = Arr.fromList $ snd . snd <$> Map.toList vsm
 
+overIndex :: Int -> CMap k a -> CMap k a
+overIndex pix (FlatMap kks v) = FlatMap kks $ Arr.drop (pix * Map.size kks) v
+overIndex pix (MKeyMap msk lsv) = MKeyMap msk $ overIndex (pix * size msk) lsv
+
 toList :: Keys k => CMap k a -> [(k,a)]
-toList = undefined
+toList (FlatMap kks v) = second (v Arr.!) <$> Map.toList kks
+toList (MKeyMap msk lsv) = case useKeys of
+        Left ((_, combineKeys), Dict)
+           -> [ (combineKeys lk rk, x)
+              | (lk, pix) <- toList msk
+              , (rk, x) <- toList $ overIndex pix lsv ]
 
 data KeyStructure k
    = FlatKey (Map k ())
    | MultiKey (KeyStructure (LSubkey k)) (KeyStructure (RSubkey k))
 instance ∀ k . (Keys k) => Eq (KeyStructure k) where
   x == y = case (useKeys, (x, y)) of
-    (Left (_ :: k -> (LSubkey k, RSubkey k), Dict), (MultiKey lx rx, MultiKey ly ry))
+    ( Left ( (_ :: k -> (LSubkey k, RSubkey k), _), Dict )
+     ,(MultiKey lx rx, MultiKey ly ry))
       -> lx == ly && rx == ry
     (Right Dict, (FlatKey kx, FlatKey ky))
       -> kx == ky
@@ -121,7 +134,7 @@ indices q = (`evalState`0) . forM q $ \_ -> state $ \i -> (i,i)
 
 fromList' :: ∀ k a . Keys k => [(k, a)] -> Maybe (CMap k a)
 fromList' l = case useKeys of
-   Left (splitKey, Dict) -> do
+   Left ((splitKey,_), Dict) -> do
        let (lKeys, rKeys) = unzip [ ((kl,()), (kr,x))
                                   | (k,x) <- l
                                   , let (kl,kr) = splitKey k ]
