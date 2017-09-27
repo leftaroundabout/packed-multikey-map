@@ -50,7 +50,7 @@ type KeyKey k = Either ( ( k -> (LSubkey k, RSubkey k)
                        , (Dict (Keys (LSubkey k), Keys (RSubkey k))) )
                        (Dict (Ord k))
 
-class Eq k => Keys k where
+class (Eq k, Show k) => Keys k where
   type LSubkey k :: *
   type LSubkey k = k
   type RSubkey k :: *
@@ -92,14 +92,14 @@ instance Keys Natural where
 
 instance Keys Double where
   useKeys = Right Dict
-instance Integral a => Keys (Ratio a) where
+instance (Integral a, Show a) => Keys (Ratio a) where
   useKeys = Right Dict
 
 instance Keys Char where
   useKeys = Right Dict
-instance Ord a => Keys [a] where
+instance (Ord a, Show a) => Keys [a] where
   useKeys = Right Dict
-instance Ord a => Keys (Maybe a) where
+instance (Ord a, Show a) => Keys (Maybe a) where
   useKeys = Right Dict
 
 instance (Keys x, Keys y) => Keys (x,y) where
@@ -120,6 +120,13 @@ data CMap k a
   = FlatMap (Map k Int) (Arr.Vector a)
   | MKeyMap (CMap (LSubkey k) Int) (CMap (RSubkey k) a)
   deriving (Functor, Foldable, Traversable)
+
+instance ∀ k a . (Keys k, Show a) => Show (CMap k a) where
+  showsPrec p (FlatMap kks v) = showParen (p>9)
+      $ ("FlatMap "++) . showsPrec 11 kks . (' ':) . showsPrec 11 v
+  showsPrec p (MKeyMap msk lsv) = case useKeys :: KeyKey k of
+    Left (_, Dict) -> showParen (p>9)
+      $ ("FlatMap "++) . showsPrec 11 msk . (' ':) . showsPrec 11 lsv
 
 size :: CMap k a -> Int
 size (FlatMap k _) = Map.size k
