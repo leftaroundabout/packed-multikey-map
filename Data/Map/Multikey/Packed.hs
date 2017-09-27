@@ -27,7 +27,7 @@ import Prelude hiding (lookup)
 
 import qualified Data.Vector as Arr
 import qualified Data.Map as Map
-import Data.Map (Map, (!?))
+import Data.Map (Map)
 import Data.Constraint
 
 import Control.Monad
@@ -119,7 +119,14 @@ instance (Keys x, Keys y, Keys z, Keys w) => Keys (x,y,z,w) where
 data CMap k a
   = FlatMap (Map k Int) (Arr.Vector a)
   | MKeyMap (CMap (LSubkey k) Int) (CMap (RSubkey k) a)
-  deriving (Functor, Foldable, Traversable)
+  deriving (Functor, Foldable)
+
+traverseCMap :: Applicative f => (a -> f b) -> CMap k a -> f (CMap k b)
+traverseCMap f (FlatMap kks v) = FlatMap kks <$> traverse f v
+traverseCMap f (MKeyMap msk lvs) = MKeyMap msk <$> traverseCMap f lvs
+
+instance Traversable (CMap k) where
+  traverse = traverseCMap
 
 size :: CMap k a -> Int
 size (FlatMap k _) = Map.size k
@@ -134,7 +141,7 @@ lookup = go 0
           , Just ix <- (pix * size msk +) <$> lookup x msk
            -> go ix y lsv
         (Right Dict, FlatMap kks v)
-          | Just i <- (pix * Map.size kks +) <$> (kks !? k)
+          | Just i <- (pix * Map.size kks +) <$> Map.lookup k kks
           , i <- Arr.length v
            -> Just $ v Arr.! i
         _ -> Nothing
