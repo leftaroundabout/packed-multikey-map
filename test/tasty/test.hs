@@ -32,7 +32,7 @@ tests = testGroup "Tests"
       $ (toList <$> fromList'
            [ ((0,0),'x'), ((0,1),'y'), ((0,2),'p')
            , ((1,0),'a'), ((1,1),'b'), ((1,2),'q') :: ((Int,Int),Char) ])
-        @?= Just (zip [(i,j)|j<-[0,1],i<-[0..2]] "xypabq")
+        @?= Just (zip [(i,j)|i<-[0,1],j<-[0..2]] "xypabq")
    ]
  ]
 

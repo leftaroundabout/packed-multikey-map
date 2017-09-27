@@ -33,6 +33,9 @@ import Data.Constraint
 import Control.Monad
 import Control.Monad.Trans.State
 import Control.Arrow (first, second)
+import Data.Function (on)
+import Data.Ord (comparing)
+import Data.List (sortBy, groupBy)
 
 import Data.Ratio (Ratio)
 import Data.Word
@@ -139,8 +142,9 @@ lookup = go 0
 flatFromList :: Ord k => [(k, a)] -> CMap k a
 flatFromList l = FlatMap kks v
  where kks = fst <$> vsm
-       vsm = Map.fromListWith (\a@(k,_) b@(κ,_) -> if k>κ then b else a)
-                              [ (k, (i,x)) | (i,(k,x)) <- zip [0..] l ]
+       vsm = Map.fromAscList [ (k, (i,x))
+                             | (i,(k,x):_) <- zip [0..] .
+                                   groupBy ((==)`on`fst) $ sortBy (comparing fst) l ]
        v = Arr.fromList $ snd . snd <$> Map.toList vsm
 
 overIndex :: Int -> CMap k a -> CMap k a
