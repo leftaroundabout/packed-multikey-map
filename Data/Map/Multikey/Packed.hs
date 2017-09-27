@@ -19,7 +19,8 @@
 module Data.Map.Multikey.Packed
            ( Keys(..), KeyKey
            , CMap
-           , fromList' )
+           , fromList'
+           , toList )
            where
 
 import Prelude hiding (lookup)
