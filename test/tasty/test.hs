@@ -33,6 +33,11 @@ tests = testGroup "Tests"
            [ ((0,0),'x'), ((0,1),'y'), ((0,2),'p')
            , ((1,0),'a'), ((1,1),'b'), ((1,2),'q') :: ((Int,Int),Char) ])
         @?= Just (zip [(i,j)|i<-[0,1],j<-[0..2]] "xypabq")
+   , testCase "Incomplete table"
+      $ (toList <$> fromList'
+           [ ((0,0),'x'), ((0,1),'y'), ((0,2),'p')
+           , ((1,0),'a'),              ((1,2),'q') :: ((Int,Int),Char) ])
+        @?= Nothing
    ]
  ]
 
