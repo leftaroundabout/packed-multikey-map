@@ -90,6 +90,8 @@ instance Keys Natural where
   useKeys = Right Dict
 #endif
 
+instance Keys Float where
+  useKeys = Right Dict
 instance Keys Double where
   useKeys = Right Dict
 instance Integral a => Keys (Ratio a) where
@@ -100,6 +102,8 @@ instance Keys Char where
 instance Ord a => Keys [a] where
   useKeys = Right Dict
 instance Ord a => Keys (Maybe a) where
+  useKeys = Right Dict
+instance (Ord a, Ord b) => Keys (Either a b) where
   useKeys = Right Dict
 
 instance (Keys x, Keys y) => Keys (x,y) where
