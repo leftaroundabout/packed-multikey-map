@@ -1,5 +1,5 @@
 -- |
--- Module      : Data.Vector.Unboxed.Nested
+-- Module      : Data.Map.Multikey.Packed
 -- Copyright   : (c) Justus Sagemüller 2017
 -- License     : GPL v3
 -- 
