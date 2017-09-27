@@ -8,6 +8,7 @@
 -- Portability : portable
 -- 
 
+{-# LANGUAGE CPP                      #-}
 {-# LANGUAGE TypeFamilies             #-}
 {-# LANGUAGE DeriveFunctor            #-}
 {-# LANGUAGE DeriveFoldable           #-}
@@ -32,6 +33,14 @@ import Control.Monad
 import Control.Monad.Trans.State
 import Control.Arrow (first, second)
 
+import Data.Ratio (Ratio)
+import Data.Word
+import Data.Int
+import Data.Void
+#if MIN_VERSION_base(4,8,0)
+import Numeric.Natural
+#endif
+
 type KeyKey k = Either ( ( k -> (LSubkey k, RSubkey k)
                          , LSubkey k -> RSubkey k -> k )
                        , (Dict (Keys (LSubkey k), Keys (RSubkey k))) )
@@ -44,19 +53,63 @@ class Eq k => Keys k where
   type RSubkey k = k
   useKeys :: KeyKey k
 
+instance Keys Void where
+  useKeys = Right Dict
+instance Keys () where
+  useKeys = Right Dict
+
 instance Keys Int where
   useKeys = Right Dict
+instance Keys Int8 where
+  useKeys = Right Dict
+instance Keys Int16 where
+  useKeys = Right Dict
+instance Keys Int32 where
+  useKeys = Right Dict
+instance Keys Int64 where
+  useKeys = Right Dict
+instance Keys Integer where
+  useKeys = Right Dict
+
+instance Keys Word where
+  useKeys = Right Dict
+instance Keys Word8 where
+  useKeys = Right Dict
+instance Keys Word16 where
+  useKeys = Right Dict
+instance Keys Word32 where
+  useKeys = Right Dict
+instance Keys Word64 where
+  useKeys = Right Dict
+#if MIN_VERSION_base(4,8,0)
+instance Keys Natural where
+  useKeys = Right Dict
+#endif
+
 instance Keys Double where
   useKeys = Right Dict
+instance Integral a => Keys (Ratio a) where
+  useKeys = Right Dict
+
 instance Keys Char where
   useKeys = Right Dict
 instance Ord a => Keys [a] where
+  useKeys = Right Dict
+instance Ord a => Keys (Maybe a) where
   useKeys = Right Dict
 
 instance (Keys x, Keys y) => Keys (x,y) where
   type LSubkey (x,y) = x
   type RSubkey (x,y) = y
   useKeys = Left ((id, (,)), Dict)
+instance (Keys x, Keys y, Keys z) => Keys (x,y,z) where
+  type LSubkey (x,y,z) = x
+  type RSubkey (x,y,z) = (y,z)
+  useKeys = Left ((\(x,y,z)->(x,(y,z)), \x (y,z)->(x,y,z)), Dict)
+instance (Keys x, Keys y, Keys z, Keys w) => Keys (x,y,z,w) where
+  type LSubkey (x,y,z,w) = (x,y)
+  type RSubkey (x,y,z,w) = (z,w)
+  useKeys = Left ((\(x,y,z,w)->((x,y),(z,w)), \(x,y) (z,w)->(x,y,z,w)), Dict)
 
 
 data CMap k a
