@@ -10,6 +10,10 @@
 
 {-# LANGUAGE CPP                      #-}
 {-# LANGUAGE TypeFamilies             #-}
+{-# LANGUAGE FlexibleInstances        #-}
+{-# LANGUAGE FlexibleContexts         #-}
+{-# LANGUAGE UndecidableInstances     #-}
+{-# LANGUAGE ConstraintKinds          #-}
 {-# LANGUAGE DeriveFunctor            #-}
 {-# LANGUAGE DeriveFoldable           #-}
 {-# LANGUAGE DeriveTraversable        #-}
@@ -44,6 +48,10 @@ import Data.Void
 #if MIN_VERSION_base(4,8,0)
 import Numeric.Natural
 #endif
+
+import qualified Test.QuickCheck as QC
+
+
 
 type KeyKey k = Either ( ( k -> (LSubkey k, RSubkey k)
                          , LSubkey k -> RSubkey k -> k )
@@ -214,3 +222,37 @@ fromList' l = case useKeys of
                             <$> filter ((==i) . fst . splitKey . fst) l
        MKeyMap (indices msk) <$> perfectConcat lsv
    Right Dict -> Just $ flatFromList l
+
+fromFlatMap :: ∀ k a . (Keys k, Ord k) => Map k a -> CMap k a
+fromFlatMap μπ = case fromList' $ Map.toList μπ of
+                   Just ζπ -> ζπ
+
+flatArb :: (Keys k, Ord k, QC.Arbitrary k, QC.Arbitrary v) => QC.Gen (CMap k v)
+flatArb = fromFlatMap <$> QC.arbitrary
+
+splitArb :: ( Keys k
+            , QC.Arbitrary (CMap (LSubkey k) (Int->v))
+            , QC.Arbitrary (CMap (RSubkey k) Int) )
+              => QC.Gen (CMap k v)
+splitArb = case useKeys of
+  Left ((_, combineKeys), Dict) -> do
+      lmargin <- QC.arbitrary
+      rmargin <- QC.arbitrary
+      let Just m = fromList' [ (combineKeys k l, f (x::Int))
+                             | (k,f) <- toList lmargin
+                             , (l,x) <- toList rmargin ]
+      return m
+
+instance QC.Arbitrary v => QC.Arbitrary (CMap Int v) where arbitrary = flatArb
+instance QC.Arbitrary v => QC.Arbitrary (CMap Integer v) where arbitrary = flatArb
+instance QC.Arbitrary v => QC.Arbitrary (CMap Double v) where arbitrary = flatArb
+instance QC.Arbitrary v => QC.Arbitrary (CMap Char v) where arbitrary = flatArb
+instance (QC.Arbitrary c, Ord c, QC.Arbitrary v) => QC.Arbitrary (CMap [c] v) where arbitrary = flatArb
+
+type SplArb k l v = (QC.Arbitrary (CMap k (Int->v)), QC.Arbitrary (CMap l Int))
+instance (Keys k, Keys l, SplArb k l v) => QC.Arbitrary (CMap (k,l) v) where
+  arbitrary = splitArb
+instance (Keys k, Keys l, Keys m, SplArb k (l,m) v) => QC.Arbitrary (CMap (k,l,m) v) where
+  arbitrary = splitArb
+instance (Keys k, Keys l, Keys m, Keys n, SplArb (k,l) (m,n) v) => QC.Arbitrary (CMap (k,l,m,n) v) where
+  arbitrary = splitArb
