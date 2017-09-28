@@ -14,6 +14,7 @@ import Data.Map.Multikey.Packed
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import qualified Test.Tasty.QuickCheck as QC
 
 
 
@@ -38,6 +39,12 @@ tests = testGroup "Tests"
            [ ((0,0),'x'), ((0,1),'y'), ((0,2),'p')
            , ((1,0),'a'),              ((1,2),'q') :: ((Int,Int),Char) ])
         @?= Nothing
+   , QC.testProperty "List conversion is reversible (Int/Int)"
+      $ \m -> fromList' (toList m)
+              == Just (m :: CMap Int Int)
+   , QC.testProperty "List conversion is reversible (Int²/Double)"
+      $ \m -> fromList' (toList m)
+              == Just (m :: CMap (Int,Int) Double)
    ]
  ]
 
