@@ -21,11 +21,14 @@
 {-# LANGUAGE UnicodeSyntax            #-}
 
 module Data.Map.Multikey.Packed
-           ( Keys(..), KeyKey
-           , CMap
+           ( -- * Multikey maps
+             CMap
            , empty
            , fromList'
-           , toList )
+           , toList
+           , lookup
+             -- * The class of supported keys
+           , Keys(..), KeyKey )
            where
 
 import Prelude hiding (lookup)
@@ -131,6 +134,22 @@ instance (Keys x, Keys y, Keys z, Keys w) => Keys (x,y,z,w) where
   useKeys = Left ((\(x,y,z,w)->((x,y),(z,w)), \(x,y) (z,w)->(x,y,z,w)), Dict)
 
 
+-- | For keys of types like 'Int' or 'String', this container behaves just
+--   like 'Map.Map'. But for compound types – tuples, in particular – it demands the
+--   “rectangular property”: if the key @(p,x)@ is in the map and key @(q,y)@ too,
+--   then keys @(q,x)@ and @(p,y)@ must be present as well.
+--
+-- In other words, such a map can be visualised as a /table/ with all the keys
+--   on two edges and the values in the middle, like, in case of
+--   @'CMap' ('Int','String') 'Double'@,
+--
+-- @
+--      "bla"  "blub"  "foo"
+--   0   3.8    4.1     2.0
+--   1   3.9    6.3     6.3
+--   5   1.0    11.6    2.2
+--  43   54.1   10.0    10.1
+-- @
 data CMap k a
   = FlatMap (Map k Int) (Arr.Vector a)
   | MKeyMap (CMap (LSubkey k) Int) (CMap (RSubkey k) a)
@@ -219,6 +238,7 @@ allEq (x:xs) = all (==x) xs
 indices :: Traversable t => t a -> t Int
 indices q = (`evalState`0) . forM q $ \_ -> state $ \i -> (i,i+1)
 
+-- | Build a map, if the given keys fulfill the /rectangular property/.
 fromList' :: ∀ k a . Keys k => [(k, a)] -> Maybe (CMap k a)
 fromList' l = case useKeys of
    Left ((splitKey,_), Dict) -> do
