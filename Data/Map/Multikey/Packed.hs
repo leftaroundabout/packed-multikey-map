@@ -64,6 +64,8 @@ class Eq k => Keys k where
   type RSubkey k :: *
   type RSubkey k = k
   useKeys :: KeyKey k
+  useKeys' :: proxy k -> KeyKey k
+  useKeys' _ = useKeys
 
 instance Keys Void where
   useKeys = Right Dict
@@ -260,3 +262,8 @@ instance (Keys k, Keys l, Keys m, Keys n, SplArb (k,l) (m,n) v) => QC.Arbitrary 
 
 instance (Show k, Keys k, Show a) => Show (CMap k a) where
   showsPrec p m = showParen (p>9) $ ("fromList' "++) . showsPrec 11 (toList m)
+
+instance ∀ k a . (Keys k, Eq a) => Eq (CMap k a) where
+  FlatMap k v == FlatMap i w = k==i && v==w
+  MKeyMap k v == MKeyMap i w = case useKeys' ([]::[k]) of
+   Left (_, Dict) -> k==i && v==w
