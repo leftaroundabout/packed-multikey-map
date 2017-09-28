@@ -23,6 +23,7 @@
 module Data.Map.Multikey.Packed
            ( Keys(..), KeyKey
            , CMap
+           , empty
            , fromList'
            , toList )
            where
@@ -195,7 +196,13 @@ keyStructure :: CMap k a -> KeyStructure k
 keyStructure (FlatMap k _) = FlatKey $ const () <$> k
 keyStructure (MKeyMap msk lsv) = MultiKey (keyStructure msk) (keyStructure lsv)
 
+empty :: ∀ k a . Keys k => CMap k a
+empty = case useKeys' ([]::[k]) of
+    Left (_, Dict) -> MKeyMap empty empty
+    Right _ -> FlatMap Map.empty Arr.empty
+
 perfectConcat :: ∀ k a . Keys k => [CMap k a] -> Maybe (CMap k a)
+perfectConcat [] = Just empty
 perfectConcat ms@(_:_)
   | allEq $ keyStructure <$> ms  = Just $ cat ms
   | otherwise                    = Nothing
