@@ -256,3 +256,7 @@ instance (Keys k, Keys l, Keys m, SplArb k (l,m) v) => QC.Arbitrary (CMap (k,l,m
   arbitrary = splitArb
 instance (Keys k, Keys l, Keys m, Keys n, SplArb (k,l) (m,n) v) => QC.Arbitrary (CMap (k,l,m,n) v) where
   arbitrary = splitArb
+
+
+instance (Show k, Keys k, Show a) => Show (CMap k a) where
+  showsPrec p m = showParen (p>9) $ ("fromList' "++) . showsPrec 11 (toList m)
