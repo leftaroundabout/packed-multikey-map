@@ -8,7 +8,7 @@ synopsis:            Efficient “spreadsheet table” like maps with multiple m
 license:             GPL-3
 license-file:        LICENSE
 author:              Justus Sagemüller
-maintainer:          (@) jsagemue $ uni-koeln.de
+maintainer:          (@) jsag $ hvl.no
 homepage:            https://github.com/leftaroundabout/packed-multikey-map
 -- copyright:           
 category:            Data
